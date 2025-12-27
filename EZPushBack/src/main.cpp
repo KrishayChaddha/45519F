@@ -30,55 +30,47 @@ ez::tracking_wheel vert_tracker(-19, 3.25, 0);   // This tracking wheel is paral
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-  // Print our branding over your terminal :D
-  ez::ez_template_print();
+    ez::ez_template_print();
 
-  pros::delay(500);  // Stop the user from doing anything while legacy ports configure
+    pros::delay(500);
 
-  // Look at your horizontal tracking wheel and decide if it's in front of the midline of your robot or behind it
-  //  - change `back` to `front` if the tracking wheel is in front of the midline
-  //  - ignore this if you aren't using a horizontal tracker
-  // chassis.odom_tracker_back_set(&horiz_tracker);
-  // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
-  //  - change `left` to `right` if the tracking wheel is to the right of the centerline
-  //  - ignore this if you aren't using a vertical tracker
-  chassis.odom_tracker_right_set(&vert_tracker);
+    chassis.odom_tracker_right_set(&vert_tracker);
 
-  // Configure your chassis controls
-  chassis.opcontrol_curve_buttons_toggle(true);   // Enables modifying the controller curve with buttons on the joysticks
-  chassis.opcontrol_drive_activebrake_set(2);   // Sets the active brake kP. We recommend ~2.  0 will disable.
-  chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
+    chassis.opcontrol_curve_buttons_toggle(true);
+    chassis.opcontrol_drive_activebrake_set(2);
+    chassis.opcontrol_curve_default_set(0.0, 0.0);
 
-  // Set the drive to your own constants from autons.cpp!
-  default_constants();
+    default_constants();
 
-  // These are already defaulted to these buttons, but you can change the left/right curve buttons here!
-  // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
-  // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
+    // Autonomous Selector
+    ez::as::auton_selector.autons_add({
+        {"Solo Auton\n\nThis will run solo_auton", solo_auton},
+        {"Right Side Auto\n\nRight side auton with matchload", right_side},
+        {"Left Side Auto\n\nLeft side auton with matchload", left_side},
+        {"Solo Auton Fail\n\n This one fails a lot", sawp_autonfail},
+        {"Drive\n\nDrive forward and come back", drive_example},
+        {"Turn\n\nTurn 3 times.", turn_example},
+        {"Drive and Turn\n\nDrive forward, turn, come back", drive_and_turn},
+        {"Swing Turn\n\nSwing in an 'S' curve", swing_example},
+        {"Motion Chaining\n\nDrive forward, turn, and come back, but blend everything together :D", motion_chaining},
+        {"Combine all 3 movements", combining_movements},
+        {"Interference\n\nAfter driving forward, robot performs differently if interfered or not", interfered_example},
+        {"Simple Odom\n\nThis is the same as the drive example, but it uses odom instead!", odom_drive_example},
+        {"Pure Pursuit\n\nGo to (0, 30) and pass through (6, 10) on the way.  Come back to (0, 0)", odom_pure_pursuit_example},
+        {"Pure Pursuit Wait Until\n\nGo to (24, 24) but start running an intake once the robot passes (12, 24)", odom_pure_pursuit_wait_until_example},
+        {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
+        {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
+        {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets}
+    });
 
-  // Autonomous Selector using LLEMU
-  ez::as::auton_selector.autons_add({
-      {"Drive\n\nDrive forward and come back", drive_example},
-      {"Turn\n\nTurn 3 times.", turn_example},
-      {"Drive and Turn\n\nDrive forward, turn, come back", drive_and_turn},
-      {"Drive and Turn\n\nSlow down during drive", wait_until_change_speed},
-      {"Swing Turn\n\nSwing in an 'S' curve", swing_example},
-      {"Motion Chaining\n\nDrive forward, turn, and come back, but blend everything together :D", motion_chaining},
-      {"Combine all 3 movements", combining_movements},
-      {"Interference\n\nAfter driving forward, robot performs differently if interfered or not", interfered_example},
-      {"Simple Odom\n\nThis is the same as the drive example, but it uses odom instead!", odom_drive_example},
-      {"Pure Pursuit\n\nGo to (0, 30) and pass through (6, 10) on the way.  Come back to (0, 0)", odom_pure_pursuit_example},
-      {"Pure Pursuit Wait Until\n\nGo to (24, 24) but start running an intake once the robot passes (12, 24)", odom_pure_pursuit_wait_until_example},
-      {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
-      {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
-      {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
-  });
+    // Initialize chassis and auton selector
+    chassis.initialize();
+    ez::as::initialize();
 
-  // Initialize chassis and auton selector
-  chassis.initialize();
-  ez::as::initialize();
-  master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
+    // Rumble feedback (make sure this is inside the function)
+    master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
 }
+
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -270,17 +262,17 @@ void opcontrol() {
 
     // Reduce outtake motor speed when funnel is lowered
     if(pistonState == RETRACTED) {
-      outtake.set_voltage_limit(10160); //10160 mV = 80%
+      outtake.set_voltage_limit(12700); //mV = 100
     } else {
       outtake.set_voltage_limit(5715); //5715 mV = 45%
     }
 
     // Only allow intake when outtake is not moving and not fully up
     if(outtakeState != MOVING && outtakeState != UP) {
-        if(master.get_digital(DIGITAL_R1)) {
+        if(master.get_digital(DIGITAL_R2)) {
             intake.move(127);
-        } else if(master.get_digital(DIGITAL_R2)) {
-            intake.move(-127);
+        } else if(master.get_digital(DIGITAL_R1)) {
+            intake.move(-70);
         } else {
             intake.move(0);
         }
@@ -313,7 +305,7 @@ void opcontrol() {
     if(master.get_digital(DIGITAL_X) && outtakeState != UP && outtakeState != MOVING) {
         outtakeState = MOVING;
         if (pistonState == RETRACTED) {
-            outtake.move_absolute(385, 67); //up
+            outtake.move_absolute(385, 127); //up
         } else {
             outtake.move_absolute(410, 67); //up
         }
@@ -324,7 +316,7 @@ void opcontrol() {
     if(master.get_digital(DIGITAL_B) && outtakeState != DOWN && outtakeState != MOVING) {
         outtakeState = MOVING;
         if (pistonState == RETRACTED) {
-            outtake.move_absolute(-385, 67); //down
+            outtake.move_absolute(-385, 127); //down
         } else {
             outtake.move_absolute(-410, 67); //down
         }
