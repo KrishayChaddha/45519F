@@ -37,17 +37,19 @@ void initialize() {
     chassis.odom_tracker_right_set(&vert_tracker);
 
     chassis.opcontrol_curve_buttons_toggle(true);
-    chassis.opcontrol_drive_activebrake_set(2);
+    chassis.opcontrol_drive_activebrake_set(0);
     chassis.opcontrol_curve_default_set(0.0, 0.0);
 
     default_constants();
 
     // Autonomous Selector
     ez::as::auton_selector.autons_add({
-        {"Solo Auton\n\nThis will run solo_auton", solo_auton},
         {"Right Side Auto\n\nRight side auton with matchload", right_side},
+        {"Solo Auton\n\nThis will run solo_auton", solo_auton},
         {"Left Side Auto\n\nLeft side auton with matchload", left_side},
         {"Solo Auton Fail\n\n This one fails a lot", sawp_autonfail},
+        {"Skills Auton\n\nFull skills auton", skills_auton},
+        {"Right Side Extra\n\nRight side auton with extra", right_side_extra},
         {"Drive\n\nDrive forward and come back", drive_example},
         {"Turn\n\nTurn 3 times.", turn_example},
         {"Drive and Turn\n\nDrive forward, turn, come back", drive_and_turn},
@@ -306,10 +308,13 @@ void opcontrol() {
         outtakeState = MOVING;
         if (pistonState == RETRACTED) {
             outtake.move_absolute(385, 127); //up
+            }
         } else {
             outtake.move_absolute(410, 67); //up
         }
         outtakeState = UP;
+
+      
     }
 
     // Lower B only if not down
@@ -321,9 +326,9 @@ void opcontrol() {
             outtake.move_absolute(-410, 67); //down
         }
         outtakeState = DOWN;
+        
         outtake.tare_position();
     }
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
-}
