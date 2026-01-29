@@ -681,7 +681,7 @@ void skills_auton() {
   intake.move(127);
   chassis.pid_drive_set(11_in, 70);
   chassis.pid_wait();
-  pros::delay(1000);
+  pros::delay(1200);
   intake.move(0);
   matchload.set(false);
 
@@ -735,7 +735,7 @@ void skills_auton() {
   chassis.pid_wait();
 
   intake.move(127);
-  pros::delay(800);
+  pros::delay(1200);
   intake.move(0);
   matchload.set(false);
 
@@ -769,7 +769,7 @@ void skills_auton() {
   intake.move(127);
   chassis.pid_drive_set(26_in, DRIVE_SPEED);
   chassis.pid_wait();
-  pros::delay(1000); 
+  pros::delay(1200); 
   intake.move(0);
 
   chassis.pid_drive_set(-10_in, DRIVE_SPEED); 
@@ -794,6 +794,8 @@ void skills_auton() {
   chassis.pid_drive_set(10_in, DRIVE_SPEED);
   chassis.pid_wait();
 
+  chassis.pid_turn_set(-90_deg, TURN_SPEED);
+
   chassis.pid_drive_set(-5_in, DRIVE_SPEED);
   chassis.pid_wait();
 
@@ -808,7 +810,7 @@ void skills_auton() {
   intake.move(127);
   chassis.pid_drive_set(26_in, DRIVE_SPEED);
   chassis.pid_wait();
-  pros::delay(1000);
+  pros::delay(1200);
   intake.move(0);
   matchload.set(false);
 

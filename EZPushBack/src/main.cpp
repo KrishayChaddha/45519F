@@ -131,7 +131,9 @@ void autonomous() {
 }
 
 /**
- * Simplifies printing tracker values to the brain screen
+ * Ez screen task
+ * Adding new pages here will let you view them during user control or autonomous
+ * and will help you debug problems you're having
  */
 void screen_print_tracker(ez::tracking_wheel *tracker, std::string name, int line) {
   std::string tracker_value = "", tracker_width = "";
@@ -189,6 +191,7 @@ pros::Task ezScreenTask(ez_screen_task);
  *     is only enabled when you're not connected to competition control.
  * - gives you a GUI to change your PID values live by pressing X
  */
+
 void ez_template_extras() {
   // Only run this when not connected to a competition switch
   if (!pros::competition::is_connected()) {
@@ -264,7 +267,7 @@ void opcontrol() {
 
     // Reduce outtake motor speed when funnel is lowered
     if(pistonState == RETRACTED) {
-      outtake.set_voltage_limit(12700); //mV = 100
+      outtake.set_voltage_limit(12700); //10160 mV = 80%
     } else {
       outtake.set_voltage_limit(5715); //5715 mV = 45%
     }
@@ -308,13 +311,11 @@ void opcontrol() {
         outtakeState = MOVING;
         if (pistonState == RETRACTED) {
             outtake.move_absolute(385, 127); //up
-            }
         } else {
-            outtake.move_absolute(410, 67); //up
+            outtake.move_absolute(410, 70); //up
         }
+        
         outtakeState = UP;
-
-      
     }
 
     // Lower B only if not down
@@ -323,12 +324,12 @@ void opcontrol() {
         if (pistonState == RETRACTED) {
             outtake.move_absolute(-385, 127); //down
         } else {
-            outtake.move_absolute(-410, 67); //down
+            outtake.move_absolute(-410, 70); //down
         }
         outtakeState = DOWN;
-        
         outtake.tare_position();
     }
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
+}
