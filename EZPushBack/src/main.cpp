@@ -8,8 +8,8 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {-1, 2, -3},     // Left Chassis Ports (negative port will reverse it!)
-    {8, -9, 10},  // Right Chassis Ports (negative port will reverse it!)
+    {1, -2, -3},     // Left Chassis Ports (negative port will reverse it!)
+    {8, -9, 7},  // Right Chassis Ports (negative port will reverse it!)
 
     20,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
@@ -44,11 +44,13 @@ void initialize() {
 
     // Autonomous Selector
     ez::as::auton_selector.autons_add({
-        {"Right Side Auto\n\nRight side auton with matchload", right_side},
-        {"Solo Auton\n\nThis will run solo_auton", solo_auton},
-        {"Left Side Auto\n\nLeft side auton with matchload", left_side},
-        {"Solo Auton Fail\n\n This one fails a lot", sawp_autonfail},
         {"Skills Auton\n\nFull skills auton", skills_auton},
+        {"Right Side Auto\n\nRight side auton with matchload", right_side},
+        {"Left Side Auto\n\nLeft side auton with matchload", left_side},
+        {"Fifteen Points\n\nFifteen Points", fifteen_points},
+        {"If Team Has SAWP\n\nIf the team has SAWP, run this auton", ifteamhassawp},
+        {"Solo Auton Fail\n\n This one fails a lot", sawp_autonfail},
+        {"Solo Auton\n\nThis will run solo_auton", solo_auton},
         {"Right Side Extra\n\nRight side auton with extra", right_side_extra},
         {"Drive\n\nDrive forward and come back", drive_example},
         {"Turn\n\nTurn 3 times.", turn_example},
@@ -239,12 +241,19 @@ void ez_template_extras() {
 void opcontrol() {
   // This is preference to what you like to drive on
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
-  enum outtakeStates {DOWN, UP, MOVING};
+  enum outtakeStates {DOWN, UP, MOVINGUP, MOVINGDOWN};
   enum pistonStates {RETRACTED, EXTENDED};
   pistonStates pistonState = RETRACTED;
   outtakeStates outtakeState = DOWN; // starts fully down
   chassis.opcontrol_drive_reverse_set(true); // Set to true if you want to reverse the drive controls
-  outtake.tare_position();
+  outtake.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+  float outtake_voltage_limit = 127;
+  double targetAngle = 40000;
+ 
+  // Timeout variables for outtake movement states
+  uint32_t movingUpStartTime = 0;
+  uint32_t movingDownStartTime = 0;
+  const uint32_t OUTTAKE_TIMEOUT = 1000;  // 2000ms timeout
 
   while (true) {
     // Gives you some extras to make EZ-Template ezier
@@ -253,7 +262,7 @@ void opcontrol() {
     //chassis.opcontrol_tank();  // Tank control
     chassis.opcontrol_arcade_standard(ez::SPLIT);   // Standard split arcade
     // chassis.opcontrol_arcade_standard(ez::SINGLE);  // Standard single arcade
-    //chassis.opcontrol_arcade_flipped(ez::SPLIT);    // Flipped split arcade
+    // chassis.opcontrol_arcade_flipped(ez::SPLIT);    // Flipped split arcade
     // chassis.opcontrol_arcade_flipped(ez::SINGLE);   // Flipped single arcade
 
     // This is the main execution loop for the user control program.
@@ -267,13 +276,54 @@ void opcontrol() {
 
     // Reduce outtake motor speed when funnel is lowered
     if(pistonState == RETRACTED) {
-      outtake.set_voltage_limit(12700); //10160 mV = 80%
+      outtake_voltage_limit=75; //mV = 100
+      targetAngle = 24156;
     } else {
-      outtake.set_voltage_limit(5715); //5715 mV = 45%
+      outtake_voltage_limit=57.15; //5715 mV = 45%
+      targetAngle = 23475;
     }
 
-    // Only allow intake when outtake is not moving and not fully up
-    if(outtakeState != MOVING && outtakeState != UP) {
+    //Switch for determining outtake movement based on enumarator state
+    switch (outtakeState) {
+      case MOVINGUP:
+        if (movingUpStartTime == 0) {
+          movingUpStartTime = pros::millis();
+        }
+        if (std::abs(outtake_rotation.get_position() - targetAngle) > 500 &&
+            (pros::millis() - movingUpStartTime) < OUTTAKE_TIMEOUT) {
+          outtake.move(outtake_voltage_limit);
+        } else {
+          outtake.brake();
+          outtakeState = UP;
+          movingUpStartTime = 0;
+        }
+        break;
+
+      case MOVINGDOWN:
+        if (movingDownStartTime == 0) {
+          movingDownStartTime = pros::millis();
+        }
+        if (std::abs(outtake_rotation.get_position()) > 500 &&
+            (pros::millis() - movingDownStartTime) < OUTTAKE_TIMEOUT) {
+          outtake.move(-outtake_voltage_limit);
+        } else {
+          outtake.brake();
+          outtakeState = DOWN;
+          movingDownStartTime = 0;
+        }
+        break;  
+
+      case UP:
+        break;
+
+      case DOWN:
+        outtake.tare_position();
+        outtake_rotation.reset_position();
+        break;
+    }
+
+    // Only allow intake when outtake is down
+    if(outtakeState == DOWN) {
         if(master.get_digital(DIGITAL_R2)) {
             intake.move(127);
         } else if(master.get_digital(DIGITAL_R1)) {
@@ -305,29 +355,23 @@ void opcontrol() {
         matchload.set(false);
     }
 
+    // Hood piston control: extend while outtake is MOVINGUP, retract while MOVINGDOWN
+    if (outtakeState == MOVINGUP) {
+      hood.set(true);
+    } else if (outtakeState == MOVINGDOWN) {
+      hood.set(false);
+    }
     // Outtake macro without sensor
     // Raise outtake only if not up
-    if(master.get_digital(DIGITAL_X) && outtakeState != UP && outtakeState != MOVING) {
-        outtakeState = MOVING;
-        if (pistonState == RETRACTED) {
-            outtake.move_absolute(385, 127); //up
-        } else {
-            outtake.move_absolute(410, 70); //up
-        }
-        
-        outtakeState = UP;
+    if(master.get_digital(DIGITAL_X) && outtakeState == DOWN) {
+        outtakeState = MOVINGUP;
+        movingUpStartTime = 0;  // Reset timer when entering MOVINGUP
     }
 
     // Lower B only if not down
-    if(master.get_digital(DIGITAL_B) && outtakeState != DOWN && outtakeState != MOVING) {
-        outtakeState = MOVING;
-        if (pistonState == RETRACTED) {
-            outtake.move_absolute(-385, 127); //down
-        } else {
-            outtake.move_absolute(-410, 70); //down
-        }
-        outtakeState = DOWN;
-        outtake.tare_position();
+    if(master.get_digital(DIGITAL_B) && outtakeState == UP) {
+        outtakeState = MOVINGDOWN;
+        movingDownStartTime = 0;  // Reset timer when entering MOVINGDOWN
     }
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME

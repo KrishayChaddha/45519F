@@ -21,3 +21,5 @@ void left_side();
 void solo_auton();
 void right_side_extra();
 void skills_auton();
+void ifteamhassawp();
+void fifteen_points();
