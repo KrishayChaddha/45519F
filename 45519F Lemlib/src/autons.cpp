@@ -38,9 +38,11 @@ void auto_right_7() {
     chassis.waitUntilDone();
 
     // lever cycle (4 block)
-    lever.move(127);
+    intake.move(-127);
+    lever.move(107);
     pros::delay(700);
     lever.move(0);
+    intake.move(0);
 
     lever.move(-127);
     pros::delay(1600);
@@ -57,7 +59,7 @@ void auto_right_7() {
     //chassis.turnToHeading(225, 1000);
    // chassis.waitUntilDone();
 
-    chassis.moveToPose(14, 14, 225, 10000, {.maxSpeed = 60});
+    chassis.moveToPose(14, 14, 230, 10000, {.maxSpeed = 60});
     chassis.waitUntilDone();
     intake.move(0);
 
@@ -67,14 +69,17 @@ void auto_right_7() {
     intake.move(0);
 
     // descore 
-    chassis.moveToPoint(31.669, 36.403, 1300, {.forwards = false});
+    chassis.moveToPoint(32.669, 33.403, 1300, {.forwards = false});
     chassis.waitUntilDone();
     chassis.turnToHeading(-90, 1000);
     chassis.waitUntilDone();
 
     descore.set_value(false);
 
-    chassis.moveToPoint(11.0, 36.403, 1200);
+    chassis.moveToPoint(11.0, 33.403, 1200);
+    chassis.waitUntilDone();
+
+    chassis.turnToHeading(245, 1000);
     chassis.waitUntilDone();
 
     intake.move(0);
